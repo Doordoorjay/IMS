@@ -9,10 +9,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.13"
+    "@mdi/font": "^7.4.47",
+    "@tailwindcss/postcss": "^4.1.7",
+    "@tailwindcss/vite": "^4.1.7",
+    "@vueuse/core": "^13.3.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1",
+    "vuetify": "^3.8.7"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.3",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "sass": "^1.89.0",
+    "sass-loader": "^16.0.5",
+    "tailwindcss": "^4.1.7",
     "vite": "^6.2.4",
     "vite-plugin-vue-devtools": "^7.7.2"
   }

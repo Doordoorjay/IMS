@@ -1,3 +1,9 @@
 /frontend/node_modules
 /frontend/dist
+/backend/phpMyAdmin4.8.5
 .DS_Store
+.env
+.htaccess
+nginx.htaccess
+config.php
+install.lock
