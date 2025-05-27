@@ -14,24 +14,35 @@
         <v-divider class="my-3" />
 
         <v-row>
-            <v-col cols="6">
-                <div class="text-subtitle-2">来源人：</div>
-                <div class="text-body-2">{{ item.source || 'N/A' }}</div>
+            <!-- 左边信息 -->
+            <v-col cols="8">
+                <v-row>
+                    <v-col cols="6">
+                        <div class="text-subtitle-2">来源人：</div>
+                        <div class="text-body-2">{{ item.source || 'N/A' }}</div>
+                    </v-col>
+                    <v-col cols="6">
+                        <div class="text-subtitle-2">来源活动：</div>
+                        <div class="text-body-2">{{ item.venue || 'N/A' }}</div>
+                    </v-col>
+                    <v-col cols="6">
+                        <div class="text-subtitle-2">状态：</div>
+                        <v-chip :color="statusColor(item.status)" dark size="small" class="text-capitalize">
+                            <v-icon start icon="mdi-tag" />
+                            {{ item.status }}
+                        </v-chip>
+                    </v-col>
+                    <v-col cols="6">
+                        <div class="text-subtitle-2">创建时间：</div>
+                        <div class="text-body-2">{{ formatDate(item.created_at) }}</div>
+                    </v-col>
+                </v-row>
             </v-col>
-            <v-col cols="6">
-                <div class="text-subtitle-2">来源活动：</div>
-                <div class="text-body-2">{{ item.venue || 'N/A' }}</div>
-            </v-col>
-            <v-col cols="6">
-                <div class="text-subtitle-2">状态：</div>
-                <v-chip :color="statusColor(item.status)" dark size="small" class="text-capitalize">
-                    <v-icon start icon="mdi-tag" />
-                    {{ item.status }}
-                </v-chip>
-            </v-col>
-            <v-col cols="6">
-                <div class="text-subtitle-2">创建时间：</div>
-                <div class="text-body-2">{{ formatDate(item.created_at) }}</div>
+
+            <!-- 右边图片 -->
+            <v-col cols="4" class="d-flex justify-end align-start">
+                <v-img v-if="item.photo" :src="getImageUrl(item.photo)" height="120" width="120" class="rounded"
+                    cover />
             </v-col>
         </v-row>
 
@@ -47,20 +58,27 @@
                 :disabled="item.status !== 'available'">
                 <v-icon start>mdi-alert-circle</v-icon> 标记丢失
             </v-btn>
+
             <v-btn size="small" variant="tonal" color="primary" @click="$emit('used', item.code)"
                 :disabled="item.status !== 'available'">
                 <v-icon start>mdi-check-circle</v-icon> 已使用
             </v-btn>
         </v-card-actions>
-
     </v-card>
 </template>
 
 <script setup>
 defineProps({ item: Object })
+const API_BASE = import.meta.env.VITE_API_BASE
+
+const getImageUrl = (photo) => {
+    return photo ? `${API_BASE}/uploads/${photo}` : ''
+}
 
 const emit = defineEmits(['action', 'give', 'lost', 'used'])
+
 const formatDate = (str) => new Date(str).toLocaleString()
+
 const statusColor = (status) => {
     switch (status) {
         case 'available': return 'green'

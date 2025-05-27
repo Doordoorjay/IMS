@@ -39,9 +39,7 @@
                             <v-chip size="small" :color="statusColor(selected.status)" dark>{{ selected.status
                             }}</v-chip>
                         </div>
-                        <div v-if="selected.photo_url" class="mt-3">
-                            <v-img :src="selected.photo_url" max-height="200" contain />
-                        </div>
+                        <v-img :src="getImageUrl(selected.photo_url)" max-height="200" contain />
                     </v-card-text>
                     <v-card-actions>
                         <v-btn text @click="dialog = false">关闭</v-btn>
@@ -61,6 +59,8 @@ const currentTab = ref(0)
 const items = ref([])
 const dialog = ref(false)
 const selected = ref(null)
+const getImageUrl = (path) =>
+    path ? (path.startsWith('/') ? API_BASE + path : `${API_BASE}/uploads/${path}`) : ''
 
 const statusMap = {
     available: '在库',

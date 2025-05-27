@@ -18,7 +18,7 @@ if (!$query) {
 }
 
 // 判断是 code 还是 upc（简单规则）
-if (preg_match('/^I\d{6}-\d+$/', $query)) {
+if (preg_match('/^I\d+$/', $query)) {
   // 查唯一 code
   $stmt = $conn->prepare("SELECT * FROM items WHERE code = ?");
   $stmt->bind_param("s", $query);
