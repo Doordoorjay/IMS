@@ -1,5 +1,6 @@
 /frontend/node_modules
 /frontend/dist
+/frontend/.vscode
 /backend/phpMyAdmin4.8.5
 /backend/uploads
 .DS_Store
