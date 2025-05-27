@@ -64,7 +64,7 @@ const selected = ref(null)
 
 const statusMap = {
     available: '在库',
-    given: '已送人',
+    given: '已送出',
     lost: '已丢失',
     used: '已使用'
 }
@@ -89,9 +89,9 @@ function selectItem(item) {
 function statusColor(status) {
     switch (status) {
         case 'available': return 'green'
-        case 'given': return 'blue'
+        case 'given': return 'purple'
         case 'lost': return 'red'
-        case 'used': return 'indigo'
+        case 'used': return 'blue'
         default: return 'grey'
     }
 }
