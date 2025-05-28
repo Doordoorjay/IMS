@@ -24,10 +24,14 @@
 
             <!-- 右侧：状态和设置 -->
             <div class="d-flex align-center flex-shrink-0 ga-2">
-                <BackendStatus />
-                <v-btn icon>
-                    <v-icon>mdi-cog</v-icon>
-                </v-btn>
+                <BackendStatus v-if="showBackendStatus" />
+                <router-link to="/settings">
+                    <v-btn icon>
+                        <v-icon>mdi-cog</v-icon>
+                    </v-btn>
+                </router-link>
+
+
             </div>
         </v-container>
     </v-app-bar>
@@ -51,13 +55,13 @@
 
 <script setup>
 import BackendStatus from './BackendStatus.vue'
-import { computed } from 'vue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 const drawer = ref(false)
-
-const backendStatusText = computed(() =>
-    isOnline.value ? '后端在线' : '后端离线'
-)
+const showBackendStatus = ref(true)
+onMounted(() => {
+    const saved = JSON.parse(localStorage.getItem('showBackendStatus') || 'true')
+    showBackendStatus.value = saved
+})
 </script>
 
 <style scoped>

@@ -33,7 +33,23 @@ if ($conn->connect_error) {
     exit;
 }
 
-// 创建物品表（单物品结构）
+// 创建位置表
+$createLocationsTable = "
+CREATE TABLE IF NOT EXISTS locations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)";
+if (!$conn->query($createLocationsTable)) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'Failed to create locations table: ' . $conn->error
+    ]);
+    $conn->close();
+    exit;
+}
+
+// 创建物品表
 $createItemsTable = "
 CREATE TABLE IF NOT EXISTS items (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,7 +61,9 @@ CREATE TABLE IF NOT EXISTS items (
     status VARCHAR(20) DEFAULT 'available',
     photo_url VARCHAR(255),
     received_at DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    location_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
 )";
 if (!$conn->query($createItemsTable)) {
     echo json_encode([
@@ -104,6 +122,16 @@ if (file_put_contents($lockFile, 'installed') === false) {
     ]);
     exit;
 }
+
+// settings.json 默认配置
+$settings = [
+    'darkMode' => false,
+    'showBackendStatus' => true
+];
+
+// 写入到 backend/api/settings.json
+$settingsPath = __DIR__ . '/settings.json'; 
+file_put_contents($settingsPath, json_encode($settings, JSON_PRETTY_PRINT));
 
 // 安装成功
 echo json_encode(['success' => true]);
