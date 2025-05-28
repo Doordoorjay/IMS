@@ -17,19 +17,23 @@
 import { ref, watch } from 'vue'
 
 const props = defineProps({ open: Boolean, code: String })
-const emit = defineEmits(['update:open', 'submitted'])
+const emit = defineEmits(['update:open', 'submitted', 'snackbar'])
 
 const internalOpen = ref(props.open)
 watch(() => props.open, val => (internalOpen.value = val))
 watch(internalOpen, val => emit('update:open', val))
 
-const snackbar = ref({ show: false, message: '', color: 'success' })
-
 const submit = async () => {
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
+    const dateStr = `${yyyy}-${mm}-${dd}`
+
     const payload = {
         code: props.code,
         action: 'used',
-        details: null
+        details: { date: dateStr }
     }
 
     try {
@@ -38,11 +42,12 @@ const submit = async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
+
         const data = await res.json()
 
         if (data.success) {
             emit('snackbar', { message: '操作成功', color: 'success' })
-            emit('submitted', 'used') // 或 'lost'
+            emit('submitted', 'used')
             internalOpen.value = false
         } else {
             emit('snackbar', { message: data.error || '提交失败', color: 'error' })

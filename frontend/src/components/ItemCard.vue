@@ -27,9 +27,9 @@
                     </v-col>
                     <v-col cols="6">
                         <div class="text-subtitle-2">状态：</div>
-                        <v-chip :color="statusColor(item.status)" dark size="small" class="text-capitalize">
+                        <v-chip :color="statusColor(item.status)" dark size="small">
                             <v-icon start icon="mdi-tag" />
-                            {{ item.status }}
+                            {{ statusMap[item.status] || item.status }}
                         </v-chip>
                     </v-col>
                     <v-col cols="6">
@@ -40,10 +40,8 @@
             </v-col>
 
             <!-- 右边图片 -->
-            <v-col cols="4" class="d-flex justify-end align-start">
-                <v-img v-if="item.photo" :src="getImageUrl(item.photo)" height="120" width="120" class="rounded"
-                    cover />
-            </v-col>
+            <v-img :src="getImageUrl(item.photo_url) || '/default.png'"
+                style="width: 200px; height: 200px; object-fit: cover" class="ma-4 rounded" />
         </v-row>
 
         <v-divider class="my-3" />
@@ -71,9 +69,15 @@
 defineProps({ item: Object })
 const API_BASE = import.meta.env.VITE_API_BASE
 
-const getImageUrl = (photo) => {
-    return photo ? `${API_BASE}/uploads/${photo}` : ''
+const statusMap = {
+    available: '在库',
+    given: '已送出',
+    lost: '已丢失',
+    used: '已使用'
 }
+const getImageUrl = (path) =>
+    path ? (path.startsWith('/') ? API_BASE + path : `${API_BASE}/uploads/${path}`) : '/default.png'
+
 
 const emit = defineEmits(['action', 'give', 'lost', 'used'])
 

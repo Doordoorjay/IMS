@@ -7,11 +7,15 @@
         <v-container class="d-flex align-center justify-space-between" fluid>
             <!-- 左侧：Logo 和标题 -->
             <div class="d-flex align-center flex-shrink-0">
+                <!-- 小屏菜单按钮 -->
+                <v-btn icon class="d-md-none mr-2" @click="drawer = true">
+                    <v-icon>mdi-menu</v-icon>
+                </v-btn>
                 <v-img src="/logo.svg" height="32" contain class="mr-2" />
                 <span class="text-h6 font-weight-medium text-grey-darken-3">Inventory System</span>
             </div>
 
-            <!-- 中间或右侧：导航按钮 -->
+            <!-- 中间：导航按钮（仅在 md 及以上显示） -->
             <div class="d-none d-md-flex align-center justify-center flex-grow-1 ga-4">
                 <v-btn variant="text" to="/" class="text-grey-darken-1">主页</v-btn>
                 <v-btn variant="text" to="/items" class="text-grey-darken-1">物品列表</v-btn>
@@ -27,11 +31,29 @@
             </div>
         </v-container>
     </v-app-bar>
+
+    <!-- 小屏抽屉菜单 -->
+    <v-navigation-drawer v-model="drawer" temporary class="d-md-none">
+        <v-list nav dense>
+            <v-list-item to="/" @click="drawer = false">
+                <v-list-item-title>主页</v-list-item-title>
+            </v-list-item>
+            <v-list-item to="/items" @click="drawer = false">
+                <v-list-item-title>物品列表</v-list-item-title>
+            </v-list-item>
+            <v-list-item to="/new" @click="drawer = false">
+                <v-list-item-title>新入库</v-list-item-title>
+            </v-list-item>
+        </v-list>
+    </v-navigation-drawer>
 </template>
+
 
 <script setup>
 import BackendStatus from './BackendStatus.vue'
 import { computed } from 'vue'
+import { ref } from 'vue'
+const drawer = ref(false)
 
 const backendStatusText = computed(() =>
     isOnline.value ? '后端在线' : '后端离线'

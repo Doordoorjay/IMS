@@ -50,7 +50,7 @@ const props = defineProps({
     form: Object
 })
 
-const emit = defineEmits(['update:open', 'submitted'])
+const emit = defineEmits(['update:open', 'submitted', 'snackbar'])
 
 const internalOpen = ref(props.open)
 watch(() => props.open, val => (internalOpen.value = val))
@@ -61,14 +61,21 @@ const menu = ref(false)
 const formRef = ref(null)
 
 const formattedDate = computed({
-    get: () =>
-        props.form.date
-            ? new Date(props.form.date).toISOString().substring(0, 10)
-            : '',
+    get: () => {
+        if (!props.form.date) return ''
+        const d = new Date(props.form.date)
+        const yyyy = d.getFullYear()
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        return `${yyyy}-${mm}-${dd}`
+    },
     set: val => {
-        props.form.date = new Date(val)
+        const [yyyy, mm, dd] = val.split('-')
+        props.form.date = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
     }
 })
+
+
 
 const submit = async () => {
     if (!valid.value) return

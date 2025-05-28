@@ -1,38 +1,52 @@
 <template>
     <AppNavbar />
-
     <v-main>
         <v-container class="py-10" max-width="600px">
-            <v-card elevation="3" rounded="xl">
-                <v-card-title class="text-h5 font-weight-bold">新增物品</v-card-title>
-                <v-card-text>
-                    <v-form ref="form" v-model="valid" lazy-validation>
-                        <v-text-field v-model="item.name" label="物品名称" :rules="[v => !!v || '名称为必填项']" required />
+            <v-card elevation="3" rounded="xl" class="pa-6">
+                <v-card-title class="text-h5 font-weight-bold mb-4">新增物品</v-card-title>
 
-                        <v-text-field v-model="item.upc" label="UPC（可选）" />
-                        <v-text-field v-model="item.source" label="来源（可选）" />
-                        <v-text-field v-model="item.venue" label="活动地点（可选）" />
+                <v-form ref="form" v-model="valid" lazy-validation>
+                    <!-- 照片上传区 -->
+                    <div class="mb-6">
+                        <label class="text-subtitle-1 font-weight-medium mb-2 d-block">物品照片（可选）</label>
+                        <v-hover v-slot:default="{ props }">
+                            <v-sheet v-bind="props" height="180" class="d-flex align-center justify-center rounded-lg"
+                                color="grey-lighten-4" elevation="1" style="cursor: pointer"
+                                @click="triggerImageUpload">
+                                <div v-if="!imagePreview">
+                                    <v-icon size="48" color="grey-darken-1">mdi-plus</v-icon>
+                                </div>
+                                <v-img v-else :src="imagePreview" cover height="100%" width="100%" class="rounded-lg" />
+                            </v-sheet>
+                        </v-hover>
+                        <input type="file" accept="image/*" ref="photoInput" style="display: none"
+                            @change="handleImageUpload" />
+                    </div>
 
-                        <v-menu v-model="dateMenu" :close-on-content-click="false" transition="scale-transition"
-                            offset-y max-width="290px" min-width="290px">
-                            <template v-slot:activator="{ props }">
-                                <v-text-field v-model="formattedDate" label="接收日期" prepend-icon="mdi-calendar" readonly
-                                    v-bind="props" />
-                            </template>
-                            <v-date-picker v-model="item.received_at" @input="dateMenu = false" />
-                        </v-menu>
+                    <v-text-field v-model="item.name" label="物品名称" :rules="[v => !!v || '名称为必填项']" required
+                        class="mb-4" />
+                    <v-text-field v-model="item.upc" label="UPC（可选）" class="mb-4" />
+                    <v-text-field v-model="item.source" label="来源（可选）" class="mb-4" />
+                    <v-text-field v-model="item.venue" label="活动地点（可选）" class="mb-4" />
 
-                        <v-file-input v-model="item.photo" label="上传照片（可选）" accept="image/*" show-size />
+                    <!-- 日期选择 -->
+                    <v-menu v-model="dateMenu" :close-on-content-click="false" transition="scale-transition" offset-y
+                        max-width="290px" min-width="290px">
+                        <template v-slot:activator="{ props }">
+                            <v-text-field v-model="formattedDate" label="接收日期" prepend-icon="mdi-calendar" readonly
+                                v-bind="props" class="mb-4" />
+                        </template>
+                        <v-date-picker v-model="item.received_at" @input="dateMenu = false" />
+                    </v-menu>
 
-                        <v-text-field v-model="item.code" label="系统生成 Code" readonly />
-                    </v-form>
-                </v-card-text>
+                    <v-text-field v-model="item.code" label="系统生成 Code" readonly class="mb-6" />
 
-                <v-card-actions class="justify-end">
-                    <v-btn color="primary" @click="submit" :disabled="!valid">
-                        新增物品
-                    </v-btn>
-                </v-card-actions>
+                    <div class="text-right">
+                        <v-btn color="primary" @click="submit" :disabled="!valid">
+                            新增物品
+                        </v-btn>
+                    </div>
+                </v-form>
             </v-card>
         </v-container>
     </v-main>
@@ -42,6 +56,7 @@
 import { ref, computed } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 
+const API_BASE = import.meta.env.VITE_API_BASE
 const form = ref(null)
 const valid = ref(false)
 const dateMenu = ref(false)
@@ -51,7 +66,7 @@ const item = ref({
     upc: '',
     source: '',
     venue: '',
-    received_at: new Date(), // ✅ Date 类型，避免报错
+    received_at: new Date(),
     photo: null,
     code: generateCode()
 })
@@ -68,13 +83,68 @@ function generateCode() {
         Math.floor(Math.random() * 1000).toString().padStart(3, '0')
 }
 
-// 自动格式化日期输入框显示
 const formattedDate = computed({
-    get: () => item.value.received_at.toISOString().substring(0, 10),
+    get: () => {
+        const d = item.value.received_at
+        return d instanceof Date
+            ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+            : ''
+    },
     set: val => {
         item.value.received_at = new Date(val)
     }
 })
+
+const imagePreview = ref(null)
+const photoInput = ref(null)
+
+function triggerImageUpload() {
+    photoInput.value?.click()
+}
+
+async function handleImageUpload(e) {
+    const file = e.target.files[0]
+    if (!file || !file.type.startsWith('image/')) return
+
+    const img = new Image()
+    const reader = new FileReader()
+
+    reader.onload = async (event) => {
+        img.src = event.target.result
+    }
+
+    img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxSize = 800 // 最大宽/高
+        let { width, height } = img
+
+        if (width > height && width > maxSize) {
+            height *= maxSize / width
+            width = maxSize
+        } else if (height > maxSize) {
+            width *= maxSize / height
+            height = maxSize
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(blob => {
+            item.value.photo = new File([blob], file.name, { type: 'image/jpeg' })
+            const previewReader = new FileReader()
+            previewReader.onload = e => {
+                imagePreview.value = e.target.result
+            }
+            previewReader.readAsDataURL(item.value.photo)
+        }, 'image/jpeg', 0.7)
+    }
+
+    reader.readAsDataURL(file)
+}
+
 
 async function submit() {
     if (!form.value.validate()) return
@@ -117,5 +187,6 @@ async function submit() {
         alert('❌ 网络错误，请稍后再试')
     }
 }
-
 </script>
+
+<style scoped></style>

@@ -27,7 +27,8 @@
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({ open: Boolean, code: String })
-const emit = defineEmits(['update:open', 'submitted'])
+const emit = defineEmits(['update:open', 'submitted', 'snackbar'])
+
 
 const internalOpen = ref(props.open)
 watch(() => props.open, val => (internalOpen.value = val))
@@ -37,11 +38,21 @@ const menu = ref(false)
 const lostDate = ref(new Date())
 
 const formattedDate = computed({
-    get: () => lostDate.value.toISOString().substring(0, 10),
+    get: () => {
+        const d = lostDate.value
+        if (!(d instanceof Date)) return ''
+        const yyyy = d.getFullYear()
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        return `${yyyy}-${mm}-${dd}`
+    },
     set: val => {
-        lostDate.value = new Date(val)
+        const [yyyy, mm, dd] = val.split('-')
+        lostDate.value = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
     }
 })
+
+
 
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
