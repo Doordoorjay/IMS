@@ -24,6 +24,7 @@ $upc = $_POST['upc'] ?? null;
 $source = $_POST['source'] ?? null;
 $venue = $_POST['venue'] ?? null;
 $code = $_POST['code'] ?? '';
+$location_id = $_POST['location_id'] ?? null;
 $received_at = $_POST['received_at'] ?? null;
 
 if (!$name || !$code) {
@@ -47,8 +48,8 @@ if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
 }
 
 // 插入数据库
-$stmt = $conn->prepare("INSERT INTO items (code, UPC, name, source, venue, received_at, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("sssssss", $code, $upc, $name, $source, $venue, $received_at, $photo_url);
+$stmt = $conn->prepare("INSERT INTO items (code, UPC, name, source, venue, received_at, location_id, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("ssssssss", $code, $upc, $name, $source, $venue, $received_at, $location_id, $photo_url);
 
 if ($stmt->execute()) {
   echo json_encode(['success' => true, 'message' => 'Item added']);

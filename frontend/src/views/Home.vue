@@ -24,12 +24,13 @@
             </v-alert>
 
             <!-- UPC 多个卡片 -->
-            <ItemCard v-for="it in upcItems" :key="it.code" :item="it" @action="handleAction" @give="openGiveDialog"
-              @lost="openLostDialog" @used="confirmUse" />
+            <ItemCard v-for="it in upcItems" :key="it.code" :item="it" :locationMap="locationMap" @action="handleAction"
+              @give="openGiveDialog" @lost="openLostDialog" @used="confirmUse" />
 
             <!-- 唯一码卡片 -->
-            <ItemCard v-if="item" :item="item" @action="handleAction" @give="openGiveDialog" @lost="openLostDialog"
-              @used="confirmUse" />
+            <ItemCard v-if="item" :item="item" :locationMap="locationMap" @action="handleAction" @give="openGiveDialog"
+              @lost="openLostDialog" @used="confirmUse" />
+
 
           </v-col>
         </v-row>

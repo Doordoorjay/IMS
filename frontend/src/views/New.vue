@@ -6,7 +6,7 @@
                 <v-card-title class="text-h5 font-weight-bold mb-4">新增物品</v-card-title>
 
                 <v-form ref="form" v-model="valid" lazy-validation>
-                    <!-- 照片上传区 -->
+                    <!-- 照片上传 -->
                     <div class="mb-6">
                         <label class="text-subtitle-1 font-weight-medium mb-2 d-block">物品照片（可选）</label>
                         <v-hover v-slot:default="{ props }">
@@ -21,13 +21,12 @@
                         </v-hover>
                         <input type="file" accept="image/*" capture="environment" ref="photoInput" style="display: none"
                             @change="handleImageUpload" />
-
                     </div>
 
                     <v-text-field v-model="item.name" label="物品名称" :rules="[v => !!v || '名称为必填项']" required
                         class="mb-4" />
 
-                    <!-- UPC有扫码按钮版本（微信环境） -->
+                    <!-- UPC -->
                     <v-text-field v-if="isWeChat" v-model="item.upc" label="UPC（可选）" density="default" class="mb-4">
                         <template #append>
                             <v-btn color="green" variant="flat" class="h-100 py-0" style="min-width: 64px"
@@ -37,13 +36,16 @@
                             </v-btn>
                         </template>
                     </v-text-field>
-                    <!-- UPC无扫码按钮版本（非微信环境） -->
                     <v-text-field v-else v-model="item.upc" label="UPC（可选）" density="default" class="mb-4" />
 
                     <v-text-field v-model="item.source" label="来源（可选）" class="mb-4" />
                     <v-text-field v-model="item.venue" label="活动地点（可选）" class="mb-4" />
 
-                    <!-- 日期选择 -->
+                    <!-- 储存位置 -->
+                    <v-select v-model="item.location_id" :items="locationList" item-title="display" item-value="id"
+                        label="储存位置（可选）" class="mb-4" />
+
+                    <!-- 日期 -->
                     <v-menu v-model="dateMenu" :close-on-content-click="false" transition="scale-transition" offset-y
                         max-width="290px" min-width="290px">
                         <template v-slot:activator="{ props }">
@@ -56,9 +58,7 @@
                     <v-text-field v-model="item.code" label="系统生成 Code" readonly class="mb-6" />
 
                     <div class="text-right">
-                        <v-btn color="primary" @click="submit" :disabled="!valid">
-                            新增物品
-                        </v-btn>
+                        <v-btn color="primary" @click="submit" :disabled="!valid">新增物品</v-btn>
                     </div>
                 </v-form>
             </v-card>
@@ -67,19 +67,16 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { watch } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 
-const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE
+const route = useRoute()
 const form = ref(null)
 const valid = ref(false)
 const dateMenu = ref(false)
 
-// 检测是否是微信端
 const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
 
 function triggerWeChatScan() {
@@ -88,12 +85,17 @@ function triggerWeChatScan() {
     window.location.href = scanUrl
 }
 
+const imagePreview = ref(null)
+const photoInput = ref(null)
+const locationList = ref([])
+
 const item = ref({
     name: '',
     upc: '',
     source: '',
     venue: '',
     received_at: new Date(),
+    location_id: '',
     photo: null,
     code: generateCode()
 })
@@ -102,28 +104,23 @@ watch(item, (val) => {
     localStorage.setItem('item_data', JSON.stringify(val))
 }, { deep: true })
 
+watch(imagePreview, (val) => {
+    if (val) localStorage.setItem('item_image_preview', val)
+})
 
-onMounted(() => {
+onMounted(async () => {
     const saved = localStorage.getItem('item_data')
-    if (saved) {
-        const parsed = JSON.parse(saved)
-        Object.assign(item.value, parsed)
-    }
+    if (saved) Object.assign(item.value, JSON.parse(saved))
 
     const preview = localStorage.getItem('item_image_preview')
     if (preview) {
         imagePreview.value = preview
 
-        // ✅ 自动转换 base64 为 File 并恢复 photo
         const byteString = atob(preview.split(',')[1])
         const mimeString = preview.split(',')[0].split(':')[1].split(';')[0]
-
         const ab = new ArrayBuffer(byteString.length)
         const ia = new Uint8Array(ab)
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i)
-        }
-
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
         const blob = new Blob([ab], { type: mimeString })
         const file = new File([blob], 'restored.jpg', { type: mimeString })
         item.value.photo = file
@@ -134,20 +131,21 @@ onMounted(() => {
         const code = qr.split(',')[1] || qr
         item.value.upc = code
     }
+
+    // 加载储存位置
+    try {
+        const res = await fetch(`${API_BASE}/api/locations/load_locations.php`)
+        const json = await res.json()
+        if (json.success && Array.isArray(json.locations)) {
+            locationList.value = json.locations.map(loc => ({
+                ...loc,
+                display: `${loc.name}`
+            }))
+        }
+    } catch (e) {
+        console.warn('位置加载失败：', e)
+    }
 })
-
-
-function generateCode() {
-    const now = new Date()
-    return 'I' +
-        now.getFullYear().toString().slice(2) +
-        (now.getMonth() + 1).toString().padStart(2, '0') +
-        now.getDate().toString().padStart(2, '0') +
-        now.getHours().toString().padStart(2, '0') +
-        now.getMinutes().toString().padStart(2, '0') +
-        now.getSeconds().toString().padStart(2, '0') +
-        Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-}
 
 const formattedDate = computed({
     get: () => {
@@ -161,13 +159,6 @@ const formattedDate = computed({
     }
 })
 
-const imagePreview = ref(null)
-const photoInput = ref(null)
-
-watch(imagePreview, (val) => {
-    if (val) localStorage.setItem('item_image_preview', val)
-})
-
 function triggerImageUpload() {
     photoInput.value?.click()
 }
@@ -178,16 +169,11 @@ async function handleImageUpload(e) {
 
     const img = new Image()
     const reader = new FileReader()
-
-    reader.onload = async (event) => {
-        img.src = event.target.result
-    }
-
+    reader.onload = event => img.src = event.target.result
     img.onload = () => {
         const canvas = document.createElement('canvas')
         const maxSize = 800
         let { width, height } = img
-
         if (width > height && width > maxSize) {
             height *= maxSize / width
             width = maxSize
@@ -198,16 +184,12 @@ async function handleImageUpload(e) {
 
         canvas.width = width
         canvas.height = height
-
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
 
-        // ✅ 这里定义 previewReader，不要漏掉！
         canvas.toBlob(blob => {
             if (!blob) return
-
             item.value.photo = new File([blob], file.name, { type: 'image/jpeg' })
-
             const previewReader = new FileReader()
             previewReader.onload = e => {
                 imagePreview.value = e.target.result
@@ -216,11 +198,20 @@ async function handleImageUpload(e) {
             previewReader.readAsDataURL(item.value.photo)
         }, 'image/jpeg', 0.7)
     }
-
     reader.readAsDataURL(file)
 }
 
-
+function generateCode() {
+    const now = new Date()
+    return 'I' +
+        now.getFullYear().toString().slice(2) +
+        (now.getMonth() + 1).toString().padStart(2, '0') +
+        now.getDate().toString().padStart(2, '0') +
+        now.getHours().toString().padStart(2, '0') +
+        now.getMinutes().toString().padStart(2, '0') +
+        now.getSeconds().toString().padStart(2, '0') +
+        Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+}
 
 async function submit() {
     if (!form.value.validate()) return
@@ -232,12 +223,13 @@ async function submit() {
     formData.append('venue', item.value.venue || '')
     formData.append('code', item.value.code)
     formData.append('received_at', item.value.received_at.toISOString().substring(0, 10))
+    formData.append('location_id', item.value.location_id || '')
     if (item.value.photo) {
         formData.append('photo', item.value.photo)
     }
 
     try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/item/add.php`, {
+        const res = await fetch(`${API_BASE}/api/item/add.php`, {
             method: 'POST',
             body: formData,
         })
@@ -252,6 +244,7 @@ async function submit() {
                 source: '',
                 venue: '',
                 received_at: new Date(),
+                location_id: '',
                 photo: null,
                 code: generateCode()
             }

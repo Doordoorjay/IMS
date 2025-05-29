@@ -24,14 +24,19 @@
                             <v-card-subtitle class="text-caption">Code: {{ item.code }}</v-card-subtitle>
                             <v-card-text class="text-sm">
                                 <div><strong>来源:</strong> {{ item.source || '无' }}</div>
-                                <div><strong>状态:</strong>
+                                <div><strong>储存位置:</strong> {{ locationMap[item.location_id] || '无' }}</div>
+
+                                <v-divider class="my-2"></v-divider>
+
+                                <div><strong></strong>
+                                    <div v-if="item.last_action_date">
+                                        <strong>操作时间:</strong> {{ item.last_action_date }}
+                                    </div>
                                     <v-chip size="x-small" :color="statusColor(item.status)" dark>
                                         {{ statusMap[item.status] || item.status }}
                                     </v-chip>
                                 </div>
-                                <div v-if="item.last_action_date">
-                                    <strong>操作时间:</strong> {{ item.last_action_date }}
-                                </div>
+
                             </v-card-text>
                         </div>
                         <v-img :src="getImageUrl(item.photo_url) || '/default.png'"
@@ -52,6 +57,8 @@
                                 <div class="text-body-1 mb-2"><strong>UPC:</strong> {{ selected.UPC || 'N/A' }}</div>
                                 <div class="text-body-1 mb-2"><strong>来源:</strong> {{ selected.source || '无' }}</div>
                                 <div class="text-body-1 mb-2"><strong>活动:</strong> {{ selected.venue || '无' }}</div>
+                                <div class="text-body-1 mb-2"><strong>位置:</strong> {{ locationMap[selected.location_id]
+                                    || '无' }}</div>
                                 <div class="text-body-1 mb-2"><strong>录入时间:</strong> {{ selected.received_at || 'N/A' }}
                                 </div>
                             </v-col>
@@ -85,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE
@@ -103,6 +110,26 @@ const statusMap = {
     lost: '已丢失',
     used: '已使用'
 }
+const locationMap = ref({})
+
+
+async function loadLocations() {
+    try {
+        const res = await fetch(`${API_BASE}/api/locations/load_locations.php`)
+        const data = await res.json()
+        if (data.success && Array.isArray(data.locations)) {
+            locationMap.value = Object.fromEntries(
+                data.locations.map(loc => [Number(loc.id), loc.name])
+            )
+        }
+    } catch (e) {
+        console.warn('位置加载失败：', e)
+    }
+}
+
+onMounted(() => {
+    loadLocations()
+})
 
 function actionText(type) {
     switch (type) {

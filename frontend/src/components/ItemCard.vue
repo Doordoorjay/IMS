@@ -33,6 +33,10 @@
                         </v-chip>
                     </v-col>
                     <v-col cols="6">
+                        <div class="text-subtitle-2">储存位置：</div>
+                        <div class="text-body-2">{{ locationMap[item.location_id] || '无' }}</div>
+                    </v-col>
+                    <v-col cols="6">
                         <div class="text-subtitle-2">操作时间：</div>
                         <div class="text-body-2">{{ formatDate(item.created_at) }}</div>
                     </v-col>
@@ -72,7 +76,12 @@
 </template>
 
 <script setup>
-defineProps({ item: Object })
+import { ref, onMounted } from 'vue'
+
+defineProps({
+    item: Object,
+    locationMap: Object
+})
 const API_BASE = import.meta.env.VITE_API_BASE
 
 const statusMap = {
@@ -84,6 +93,16 @@ const statusMap = {
 const getImageUrl = (path) =>
     path ? (path.startsWith('/') ? API_BASE + path : `${API_BASE}/uploads/${path}`) : '/default.png'
 
+const locationMap = ref({}) // 或 reactive({})
+
+// 示例填充方式（你应该已实现类似逻辑）
+fetch(`${API_BASE}/api/locations/load_locations.php`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            locationMap.value = Object.fromEntries(data.locations.map(loc => [loc.id, loc.name]))
+        }
+    })
 
 const emit = defineEmits(['action', 'give', 'lost', 'used'])
 
