@@ -33,9 +33,15 @@
                         </v-chip>
                     </v-col>
                     <v-col cols="6">
-                        <div class="text-subtitle-2">创建时间：</div>
+                        <div class="text-subtitle-2">操作时间：</div>
                         <div class="text-body-2">{{ formatDate(item.created_at) }}</div>
                     </v-col>
+                    <v-col cols="6">
+                        <div class="text-subtitle-2">入库日期：</div>
+                        <div class="text-body-2">{{ formatDate(item.received_at) }}</div>
+                    </v-col>
+
+
                 </v-row>
             </v-col>
 

@@ -9,6 +9,11 @@
             <v-text-field ref="codeInput" v-model="code" label="请输入或扫描物品唯一码 / UPC码"
               prepend-inner-icon="mdi-barcode-scan" append-inner-icon="mdi-magnify" @keyup.enter="fetchItem"
               @click:append-inner="fetchItem" variant="outlined" hide-details class="mt-6" autocomplete="off" />
+            <!-- 微信扫码按钮，仅在微信端显示 -->
+            <v-btn v-if="isWeChat" color="green" block size="large" class="mt-6" prepend-icon="mdi-qrcode-scan"
+              @click="triggerWeChatScan">
+              一键扫码查询
+            </v-btn>
 
             <!-- 错误提示 -->
             <v-alert v-if="error" type="error" class="mt-4">{{ error }}</v-alert>
@@ -25,6 +30,7 @@
             <!-- 唯一码卡片 -->
             <ItemCard v-if="item" :item="item" @action="handleAction" @give="openGiveDialog" @lost="openLostDialog"
               @used="confirmUse" />
+
           </v-col>
         </v-row>
         <GiveDialog v-model:open="giveDialogOpen" :code="selectedCode" :form="giveDialogForm"
@@ -63,6 +69,14 @@ const lastQuery = ref('')
 const API_BASE = import.meta.env.VITE_API_BASE
 const giveDialogOpen = ref(false)
 const selectedCode = ref('')
+const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
+
+function triggerWeChatScan() {
+  const redirectUrl = window.location.origin + window.location.pathname
+  const scanUrl = `https://996315.com/api/scan/?redirect_uri=${encodeURIComponent(redirectUrl)}`
+  window.location.href = scanUrl
+}
+
 
 const snackbar = ref({
   show: false,
@@ -184,6 +198,8 @@ const handleAction = async (action, targetCode) => {
 
 onMounted(async () => {
   codeInput.value?.focus()
+
+  // 检查是否已安装
   try {
     const res = await fetch(`${API_BASE}/api/check-install.php`)
     const result = await res.json()
@@ -191,6 +207,17 @@ onMounted(async () => {
   } catch (e) {
     console.warn('检测安装状态失败：', e)
   }
+
+  // ✅ 检查是否从扫码跳转回来
+  const qr = router.currentRoute.value.query.qrresult
+  if (qr) {
+    const codeScanned = qr.split(',')[1] || qr
+    code.value = codeScanned
+
+    await nextTick() // 等待 DOM 更新
+    fetchItem()      // ✅ 自动触发查询
+  }
 })
+
 
 </script>
