@@ -25,7 +25,6 @@
 
                     <v-text-field v-model="item.name" label="物品名称" :rules="[v => !!v || '名称为必填项']" required
                         class="mb-4" />
-
                     <!-- UPC -->
                     <v-text-field v-if="isWeChat" v-model="item.upc" label="UPC（可选）" density="default" class="mb-4">
                         <template #append>
@@ -37,24 +36,18 @@
                         </template>
                     </v-text-field>
                     <v-text-field v-else v-model="item.upc" label="UPC（可选）" density="default" class="mb-4" />
-
                     <v-text-field v-model="item.source" label="来源（可选）" class="mb-4" />
                     <v-text-field v-model="item.venue" label="活动（可选）" class="mb-4" />
-
-                    <!-- 储存位置 -->
                     <v-select v-model="item.location_id" :items="locationList" item-title="display" item-value="id"
-                        label="储存位置（可选）" class="mb-4" />
-
-                    <!-- 日期 -->
+                        label="储存位置" :rules="[requiredRule]" required class="mb-4" />
                     <v-menu v-model="dateMenu" :close-on-content-click="false" transition="scale-transition" offset-y
                         max-width="290px" min-width="290px">
                         <template v-slot:activator="{ props }">
                             <v-text-field v-model="formattedDate" label="接收日期" prepend-icon="mdi-calendar" readonly
-                                v-bind="props" class="mb-4" />
+                                v-bind="props" :rules="[requiredRule]" required class="mb-4" />
                         </template>
                         <v-date-picker v-model="item.received_at" @input="dateMenu = false" />
                     </v-menu>
-
                     <v-text-field v-model="item.code" label="系统生成 Code" readonly class="mb-6" />
 
                     <div class="text-right">
@@ -74,6 +67,8 @@ import AppNavbar from '@/components/AppNavbar.vue'
 const API_BASE = import.meta.env.VITE_API_BASE
 const route = useRoute()
 const form = ref(null)
+const requiredRule = (v) => !!v || '此项为必填'
+
 const valid = ref(false)
 const dateMenu = ref(false)
 
@@ -112,6 +107,10 @@ onMounted(async () => {
     const saved = localStorage.getItem('item_data')
     if (saved) Object.assign(item.value, JSON.parse(saved))
 
+    // 🛡️ 保证 received_at 是 Date 类型
+    if (!(item.value.received_at instanceof Date)) {
+        item.value.received_at = new Date(item.value.received_at || Date.now())
+    }
     const preview = localStorage.getItem('item_image_preview')
     if (preview) {
         imagePreview.value = preview
@@ -215,6 +214,7 @@ function generateCode() {
 
 async function submit() {
     if (!form.value.validate()) return
+    const localDate = new Date(item.value.received_at.getTime() - item.value.received_at.getTimezoneOffset() * 60000)
 
     const formData = new FormData()
     formData.append('name', item.value.name)
@@ -222,7 +222,7 @@ async function submit() {
     formData.append('source', item.value.source || '')
     formData.append('venue', item.value.venue || '')
     formData.append('code', item.value.code)
-    formData.append('received_at', item.value.received_at.toISOString().substring(0, 10))
+    formData.append('received_at', localDate.toISOString().substring(0, 10))
     formData.append('location_id', item.value.location_id || '')
     if (item.value.photo) {
         formData.append('photo', item.value.photo)

@@ -18,7 +18,7 @@
             <v-col cols="8">
                 <v-row>
                     <v-col cols="6">
-                        <div class="text-subtitle-2">来源人：</div>
+                        <div class="text-subtitle-2">来源：</div>
                         <div class="text-body-2">{{ item.source || 'N/A' }}</div>
                     </v-col>
                     <v-col cols="6">
@@ -37,12 +37,12 @@
                         <div class="text-body-2">{{ locationMap[item.location_id] || '无' }}</div>
                     </v-col>
                     <v-col cols="6">
-                        <div class="text-subtitle-2">操作时间：</div>
-                        <div class="text-body-2">{{ formatDate(item.created_at) }}</div>
-                    </v-col>
-                    <v-col cols="6">
                         <div class="text-subtitle-2">入库日期：</div>
                         <div class="text-body-2">{{ formatDate(item.received_at) }}</div>
+                    </v-col>
+                    <v-col cols="6">
+                        <div class="text-subtitle-2">操作时间：</div>
+                        <div class="text-body-2">{{ formatDate(item.created_at) }}</div>
                     </v-col>
 
 

@@ -62,7 +62,7 @@
                                 </v-btn>
                                 <v-btn variant="tonal" color="primary" size="small" class="flex-grow-1"
                                     style="min-width: 110px" @click.stop="openConfirmUseDialog(item.code)">
-                                    <v-icon start>mdi-check-circle</v-icon> 已使用
+                                    <v-icon start>mdi-check-circle</v-icon> 标记使用
                                 </v-btn>
                                 <v-btn variant="tonal" color="teal" size="small" class="flex-grow-1"
                                     style="min-width: 110px" @click.stop="openMoveDialog(item.code)">
@@ -107,6 +107,25 @@
                                 </div>
                             </v-col>
                         </v-row>
+
+                        <!-- 🎁 赠送详情 -->
+                        <v-divider class="my-3" v-if="selected.status === 'given' && selected.given_info" />
+                        <div v-if="selected.status === 'given' && selected.given_info">
+                            <h3 class="text-subtitle-1 font-weight-medium mb-2">🎁 赠送信息</h3>
+                            <div class="text-body-2 mb-1"><strong>被赠送人:</strong> {{ selected.given_info.to || '未记录' }}
+                            </div>
+                            <div class="text-body-2 mb-1"><strong>赠送方式:</strong> {{ selected.given_info.method || '未记录'
+                            }}</div>
+                            <div class="text-body-2 mb-1"><strong>赠送类型:</strong> {{ selected.given_info.giftType ||
+                                '未记录' }}
+                            </div>
+                            <div class="text-body-2 mb-1"><strong>赠送活动:</strong> {{ selected.given_info.event || '无' }}
+                            </div>
+                            <div class="text-body-2"><strong>赠送时间:</strong> {{ selected.given_info.date ||
+                                selected.last_action_date }}</div>
+                        </div>
+
+                        <!-- 图片 -->
                         <div class="mt-4 text-center">
                             <v-img :src="getImageUrl(selected.photo_url) || '/default.png'" max-width="300"
                                 aspect-ratio="2/3" class="rounded" />
@@ -117,6 +136,7 @@
                     </v-card-actions>
                 </v-card>
             </v-dialog>
+
 
             <GiveDialog v-model:open="giveDialogOpen" :code="selectedCode" :form="giveDialogForm"
                 @submitted="onActionSubmitted" @snackbar="showSnackbar" />

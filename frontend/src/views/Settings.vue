@@ -1,8 +1,6 @@
 <template>
     <v-container class="py-6 px-4" style="max-width: 720px; margin: auto;">
-        <v-btn prepend-icon="mdi-arrow-left" variant="tonal" class="mb-6" @click="router.back()">
-            返回
-        </v-btn>
+        <v-btn prepend-icon="mdi-arrow-left" variant="tonal" class="mb-6" @click="router.back()">返回</v-btn>
 
         <v-card elevation="3" class="pa-6 rounded-xl">
             <h2 class="text-h5 mb-4 font-weight-medium">系统设置</h2>
@@ -14,22 +12,34 @@
 
             <h3 class="text-subtitle-1 mb-3 font-weight-medium">储存位置管理</h3>
 
-            <v-row class="mb-2">
-                <v-col cols="9">
+            <!-- 添加位置输入区 -->
+            <v-row class="mb-4" no-gutters align="center">
+                <v-col cols="9" class="pr-2">
                     <v-text-field v-model="newLocation" label="新增储存位置名称" @keyup.enter="addLocation" outlined dense
-                        clearable />
+                        hide-details clearable />
                 </v-col>
-                <v-col cols="3" class="d-flex align-end">
-                    <v-btn color="primary" block @click="addLocation">添加</v-btn>
+                <v-col cols="3">
+                    <v-btn color="primary" class="text-none" block height="40" @click="addLocation">
+                        添加
+                    </v-btn>
                 </v-col>
             </v-row>
 
-            <v-list lines="one">
+            <!-- 储存位置列表 -->
+            <v-list lines="one" density="compact">
                 <v-list-item v-for="(loc, index) in locations" :key="loc.id" class="rounded-lg bg-grey-lighten-4 mb-2">
+                    <!-- 序号头像 -->
                     <template #prepend>
-                        <v-avatar color="primary" size="28" class="mr-2">{{ index + 1 }}</v-avatar>
+                        <v-avatar color="primary" size="28" class="mr-3">{{ index + 1 }}</v-avatar>
                     </template>
-                    <v-list-item-title>{{ loc.name }}</v-list-item-title>
+
+                    <!-- 名称编辑 -->
+                    <v-list-item-title>
+                        <v-text-field v-model="loc.name" dense variant="plain" hide-details @blur="updateLocation(loc)"
+                            @keyup.enter="updateLocation(loc)" />
+                    </v-list-item-title>
+
+                    <!-- 删除按钮 -->
                     <template #append>
                         <v-btn icon color="error" @click="removeLocation(loc.id)">
                             <v-icon>mdi-delete</v-icon>
@@ -37,12 +47,12 @@
                     </template>
                 </v-list-item>
             </v-list>
+
         </v-card>
 
         <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="1500" location="top right">
             {{ snackbarText }}
         </v-snackbar>
-
     </v-container>
 </template>
 
@@ -104,14 +114,13 @@ onMounted(async () => {
     await loadLocations()
 })
 
-// 监听设置变更并自动保存
+// 自动保存设置
 watch(() => settings.darkMode, async (val) => {
     localStorage.setItem('darkMode', JSON.stringify(val))
     theme.global.name.value = val ? 'dark' : 'light'
     await autoSaveSettings()
 })
-watch(() => settings.showBackendStatus, async (val) => {
-    localStorage.setItem('showBackendStatus', JSON.stringify(val))
+watch(() => settings.showBackendStatus, async () => {
     await autoSaveSettings()
 })
 
@@ -176,7 +185,30 @@ const removeLocation = async (id) => {
         showSnackbar('无法删除位置', 'error')
     }
 }
+
+// 更新位置名称
+const updateLocation = async (loc) => {
+    const name = loc.name.trim()
+    if (!name) return showSnackbar('位置名称不能为空', 'warning')
+
+    try {
+        const res = await fetch(`${API_BASE}/api/locations/edit_location.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: loc.id, name })
+        })
+        const result = await res.json()
+        if (result.success) {
+            showSnackbar('位置已更新')
+        } else {
+            showSnackbar(result.error || '更新失败', 'error')
+        }
+    } catch {
+        showSnackbar('无法更新位置', 'error')
+    }
+}
 </script>
+
 <style scoped>
 .v-snackbar__wrapper {
     pointer-events: none;

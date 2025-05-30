@@ -44,9 +44,10 @@ while ($log = $logResult->fetch_assoc()) {
   if (!$details || !isset($details['date'])) continue;
 
   $logMap[$log['code']] = [
-    'action' => $log['action'],
-    'date' => $details['date']
-  ];
+  'action' => $log['action'],
+  'date' => $details['date'],
+  'info' => $details
+];
 }
 $logStmt->close();
 
@@ -56,8 +57,21 @@ foreach ($items as &$item) {
   if (isset($logMap[$code])) {
     $item['last_action_type'] = $logMap[$code]['action'];
     $item['last_action_date'] = $logMap[$code]['date'];
+
+    // ✅ 如果是赠送物品，额外附加赠送详情
+if ($item['status'] === 'given' && $logMap[$code]['action'] === 'given') {
+    $info = $logMap[$code]['info'];
+    $item['given_info'] = [
+      'to' => $info['to'] ?? '',
+      'method' => $info['method'] ?? '',
+      'giftType' => $info['giftType'] ?? '',
+      'event' => $info['event'] ?? '',
+      'date' => $info['date'] ?? $item['last_action_date']
+    ];
+    }
   }
 }
+
 
 echo json_encode(['success' => true, 'items' => $items]);
 
