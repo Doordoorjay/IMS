@@ -39,7 +39,7 @@
                     <v-text-field v-else v-model="item.upc" label="UPC（可选）" density="default" class="mb-4" />
 
                     <v-text-field v-model="item.source" label="来源（可选）" class="mb-4" />
-                    <v-text-field v-model="item.venue" label="活动地点（可选）" class="mb-4" />
+                    <v-text-field v-model="item.venue" label="活动（可选）" class="mb-4" />
 
                     <!-- 储存位置 -->
                     <v-select v-model="item.location_id" :items="locationList" item-title="display" item-value="id"

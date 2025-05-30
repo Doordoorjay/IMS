@@ -11,8 +11,8 @@
                 <v-btn icon class="d-md-none mr-2" @click="drawer = true">
                     <v-icon>mdi-menu</v-icon>
                 </v-btn>
-                <v-img src="/logo.svg" height="32" contain class="mr-2" />
-                <span class="text-h6 font-weight-medium text-grey-darken-3">Inventory System</span>
+                <v-icon>mdi-package-variant</v-icon>
+                <span class="text-h6 font-weight-medium text-grey-darken-3">&nbsp;储存管理</span>
             </div>
 
             <!-- 中间：导航按钮（仅在 md 及以上显示） -->

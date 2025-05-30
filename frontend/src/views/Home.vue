@@ -25,11 +25,11 @@
 
             <!-- UPC 多个卡片 -->
             <ItemCard v-for="it in upcItems" :key="it.code" :item="it" :locationMap="locationMap" @action="handleAction"
-              @give="openGiveDialog" @lost="openLostDialog" @used="confirmUse" />
+              @give="openGiveDialog" @lost="openLostDialog" @used="confirmUse" @move="openMoveDialog" />
 
             <!-- 唯一码卡片 -->
             <ItemCard v-if="item" :item="item" :locationMap="locationMap" @action="handleAction" @give="openGiveDialog"
-              @lost="openLostDialog" @used="confirmUse" />
+              @lost="openLostDialog" @used="confirmUse" @move="openMoveDialog" />
 
 
           </v-col>
@@ -40,6 +40,8 @@
           @snackbar="showSnackbar" />
         <ConfirmUseDialog v-model:open="confirmUseDialogOpen" :code="selectedCode" @submitted="onActionSubmitted"
           @snackbar="showSnackbar" />
+        <MoveDialog v-model:open="moveDialogOpen" :code="selectedCode" :locations="locationMap"
+          @submitted="onActionSubmitted" @snackbar="showSnackbar" />
       </v-container>
       <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
         {{ snackbar.message }}
@@ -54,10 +56,12 @@ import ItemCard from '@/components/ItemCard.vue'
 import GiveDialog from '@/components/GiveDialog.vue'
 import LostDialog from '@/components/LostDialog.vue'
 import ConfirmUseDialog from '@/components/ConfirmUseDialog.vue'
+import MoveDialog from '@/components/MoveDialog.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { nextTick } from 'vue'
 
+const moveDialogOpen = ref(false)
 const lostDialogOpen = ref(false)
 const confirmUseDialogOpen = ref(false)
 const code = ref('')
@@ -71,13 +75,13 @@ const API_BASE = import.meta.env.VITE_API_BASE
 const giveDialogOpen = ref(false)
 const selectedCode = ref('')
 const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
+const locationMap = ref({})
 
 function triggerWeChatScan() {
   const redirectUrl = window.location.origin + window.location.pathname
   const scanUrl = `https://996315.com/api/scan/?redirect_uri=${encodeURIComponent(redirectUrl)}`
   window.location.href = scanUrl
 }
-
 
 const snackbar = ref({
   show: false,
@@ -90,7 +94,17 @@ function showSnackbar({ message, color = 'success' }) {
   snackbar.value.color = color
   snackbar.value.show = true
 }
-
+async function loadLocations() {
+  try {
+    const res = await fetch(`${API_BASE}/api/locations/load_locations.php`)
+    const data = await res.json()
+    if (data.success && Array.isArray(data.locations)) {
+      locationMap.value = Object.fromEntries(data.locations.map(loc => [Number(loc.id), loc.name]))
+    }
+  } catch (e) {
+    console.warn('位置加载失败：', e)
+  }
+}
 
 const giveDialogForm = ref({
   to: '',
@@ -123,7 +137,10 @@ function confirmUse(code) {
   selectedCode.value = code
   confirmUseDialogOpen.value = true
 }
-
+function openMoveDialog(code) {
+  selectedCode.value = code
+  moveDialogOpen.value = true
+}
 const fetchItem = async () => {
 
   const input = code.value.trim()
@@ -170,13 +187,24 @@ const fetchItem = async () => {
   })
 
 }
-const onActionSubmitted = (action) => {
+const onActionSubmitted = (payload) => {
   if (item.value?.code === selectedCode.value) {
-    item.value.status = action
+    if (typeof payload === 'string') {
+      item.value.status = payload
+    } else {
+      Object.assign(item.value, payload)
+    }
   }
   const match = upcItems.value.find(i => i.code === selectedCode.value)
-  if (match) match.status = action
+  if (match) {
+    if (typeof payload === 'string') {
+      match.status = payload
+    } else {
+      Object.assign(match, payload)
+    }
+  }
 }
+
 
 const handleAction = async (action, targetCode) => {
   const res = await fetch(`${API_BASE}/api/item/action.php`, {
@@ -198,6 +226,7 @@ const handleAction = async (action, targetCode) => {
 
 
 onMounted(async () => {
+
   codeInput.value?.focus()
 
   // 检查是否已安装
@@ -218,6 +247,7 @@ onMounted(async () => {
     await nextTick() // 等待 DOM 更新
     fetchItem()      // ✅ 自动触发查询
   }
+  loadLocations()
 })
 
 

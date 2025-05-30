@@ -56,22 +56,30 @@
 
         <v-divider class="my-3" />
 
-        <v-card-actions class="justify-end">
-            <v-btn size="small" variant="tonal" color="purple" @click="$emit('give', item.code)"
-                :disabled="item.status !== 'available'">
-                <v-icon start>mdi-hand-heart</v-icon> 赠送出库
-            </v-btn>
+        <v-card-actions class="pt-2">
+            <div class="d-flex flex-wrap" style="gap: 8px; justify-content: flex-end;">
+                <v-btn size="small" variant="tonal" color="purple" @click="$emit('give', item.code)"
+                    :disabled="item.status !== 'available'" style="min-width: 110px; flex-basis: 48%;">
+                    <v-icon start>mdi-hand-heart</v-icon> 赠送出库
+                </v-btn>
 
-            <v-btn size="small" variant="tonal" color="error" @click="$emit('lost', item.code)"
-                :disabled="item.status !== 'available'">
-                <v-icon start>mdi-alert-circle</v-icon> 标记丢失
-            </v-btn>
+                <v-btn size="small" variant="tonal" color="error" @click="$emit('lost', item.code)"
+                    :disabled="item.status !== 'available'" style="min-width: 110px; flex-basis: 48%;">
+                    <v-icon start>mdi-alert-circle</v-icon> 标记丢失
+                </v-btn>
 
-            <v-btn size="small" variant="tonal" color="primary" @click="$emit('used', item.code)"
-                :disabled="item.status !== 'available'">
-                <v-icon start>mdi-check-circle</v-icon> 已使用
-            </v-btn>
+                <v-btn size="small" variant="tonal" color="primary" @click="$emit('used', item.code)"
+                    :disabled="item.status !== 'available'" style="min-width: 110px; flex-basis: 48%;">
+                    <v-icon start>mdi-check-circle</v-icon> 已使用
+                </v-btn>
+
+                <v-btn size="small" variant="tonal" color="teal" @click="$emit('move', item.code)"
+                    :disabled="item.status !== 'available'" style="min-width: 110px; flex-basis: 48%;">
+                    <v-icon start>mdi-map-marker</v-icon> 更改位置
+                </v-btn>
+            </div>
         </v-card-actions>
+
     </v-card>
 </template>
 
@@ -93,7 +101,7 @@ const statusMap = {
 const getImageUrl = (path) =>
     path ? (path.startsWith('/') ? API_BASE + path : `${API_BASE}/uploads/${path}`) : '/default.png'
 
-const locationMap = ref({}) // 或 reactive({})
+const locationMap = ref({})
 
 // 示例填充方式（你应该已实现类似逻辑）
 fetch(`${API_BASE}/api/locations/load_locations.php`)
@@ -104,7 +112,7 @@ fetch(`${API_BASE}/api/locations/load_locations.php`)
         }
     })
 
-const emit = defineEmits(['action', 'give', 'lost', 'used'])
+const emit = defineEmits(['action', 'give', 'lost', 'used', 'move'])
 
 const formatDate = (str) => new Date(str).toLocaleString()
 
