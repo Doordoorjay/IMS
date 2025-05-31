@@ -13,6 +13,12 @@
             <div class="text-subtitle-1 font-weight-medium my-4 text-grey-darken-2">
                 当前列表总数：{{ items.length }} 项
             </div>
+            <!-- 导出按钮 -->
+            <v-btn color="primary" class="ml-4" @click="exportToExcel">
+                <v-icon start>mdi-download</v-icon>
+                导出所有物品到 Excel
+            </v-btn>
+
 
             <!-- 列表 -->
             <v-row class="mt-4" dense>
@@ -115,7 +121,7 @@
                             <div class="text-body-2 mb-1"><strong>被赠送人:</strong> {{ selected.given_info.to || '未记录' }}
                             </div>
                             <div class="text-body-2 mb-1"><strong>赠送方式:</strong> {{ selected.given_info.method || '未记录'
-                            }}</div>
+                                }}</div>
                             <div class="text-body-2 mb-1"><strong>赠送类型:</strong> {{ selected.given_info.giftType ||
                                 '未记录' }}
                             </div>
@@ -161,6 +167,8 @@ import GiveDialog from '@/components/GiveDialog.vue'
 import LostDialog from '@/components/LostDialog.vue'
 import ConfirmUseDialog from '@/components/ConfirmUseDialog.vue'
 import MoveDialog from '@/components/MoveDialog.vue'
+import * as XLSX from 'xlsx'
+
 
 const API_BASE = import.meta.env.VITE_API_BASE
 const currentTab = ref(0)
@@ -261,6 +269,77 @@ function statusColor(status) {
         default: return 'grey'
     }
 }
+function formatDate(dateStr) {
+    if (!dateStr) return ''
+    const d = new Date(dateStr)
+    if (isNaN(d)) return ''
+    return d.toISOString().split('T')[0]
+}
+
+async function exportToExcel() {
+    try {
+        // 先加载所有位置（仅导出需要）
+        const locRes = await fetch(`${API_BASE}/api/locations/load_locations.php`)
+        const locData = await locRes.json()
+        const locMap = {}
+        if (locData.success && Array.isArray(locData.locations)) {
+            locData.locations.forEach(loc => {
+                locMap[loc.id] = loc.name
+            })
+        }
+
+        // 再拉取全部物品
+        const res = await fetch(`${API_BASE}/api/item/list.php?status=all`)
+        const data = await res.json()
+        if (!data.success) {
+            showSnackbar('导出失败：' + data.error, 'error')
+            return
+        }
+
+        const items = data.items
+
+        const worksheetData = items.map(item => ({
+            名称: item.name,
+            Code: item.code,
+            UPC: item.UPC || '',
+            状态: statusMap[item.status] || item.status,
+            来源: item.source || '',
+            活动: item.venue || '',
+            储存位置: locMap[item.location_id] || '',
+            接收时间: formatDate(item.received_at),
+            操作时间: formatDate(item.last_action_date),
+
+            // 🎁 赠送字段（仅限赠送状态）
+            被赠送人: item.given_info?.to || '',
+            赠送方式: item.given_info?.method || '',
+            赠送类型: item.given_info?.type || '',
+            赠送活动: item.given_info?.event || '',
+            赠送时间: formatDate(item.given_info?.date),
+        }))
+
+
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData)
+        const workbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(workbook, worksheet, '物品列表')
+
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+        const blob = new Blob([excelBuffer], { type: 'application/octet-stream' })
+
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = '物品列表.xlsx'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        showSnackbar('✅ 导出成功！')
+    } catch (e) {
+        console.error(e)
+        showSnackbar('导出失败，请稍后重试', 'error')
+    }
+}
+
+
 
 onMounted(() => {
     loadLocations()
