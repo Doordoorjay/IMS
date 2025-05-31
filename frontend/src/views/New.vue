@@ -25,21 +25,24 @@
 
                     <v-text-field v-model="item.name" label="物品名称" :rules="[v => !!v || '名称为必填项']" required
                         class="mb-4" />
+
                     <!-- UPC -->
                     <v-text-field v-if="isWeChat" v-model="item.upc" label="UPC（可选）" density="default" class="mb-4">
                         <template #append>
                             <v-btn color="green" variant="flat" class="h-100 py-0" style="min-width: 64px"
-                                @click="triggerWeChatScan">
-                                <v-icon start>mdi-qrcode-scan</v-icon>
-                                扫码
+                                @click="triggerWeChatScanForUPC">
+                                <v-icon start>mdi-qrcode-scan</v-icon>扫码
                             </v-btn>
                         </template>
                     </v-text-field>
-                    <v-text-field v-else v-model="item.upc" label="UPC（可选）" density="default" class="mb-4" />
+                    <v-text-field v-else v-model="item.upc" label="UPC（可选）" class="mb-4" />
+
                     <v-text-field v-model="item.source" label="来源（可选）" class="mb-4" />
                     <v-text-field v-model="item.venue" label="活动（可选）" class="mb-4" />
                     <v-select v-model="item.location_id" :items="locationList" item-title="display" item-value="id"
                         label="储存位置" :rules="[requiredRule]" required class="mb-4" />
+
+                    <!-- 日期 -->
                     <v-menu v-model="dateMenu" :close-on-content-click="false" transition="scale-transition" offset-y
                         max-width="290px" min-width="290px">
                         <template v-slot:activator="{ props }">
@@ -48,7 +51,22 @@
                         </template>
                         <v-date-picker v-model="item.received_at" @input="dateMenu = false" />
                     </v-menu>
-                    <v-text-field v-model="item.code" label="系统生成 Code" readonly class="mb-6" />
+
+                    <!-- Code 输入模式 -->
+                    <v-radio-group v-model="codeMode" row class="mb-3">
+                        <v-radio label="自动生成" value="auto" />
+                        <v-radio label="手动输入" value="manual" />
+                    </v-radio-group>
+
+                    <v-text-field v-model="item.code" label="物品 Code" :readonly="codeMode === 'auto'"
+                        :rules="[v => !!v || 'Code 为必填项']" class="mb-6">
+                        <template #append v-if="codeMode === 'manual' && isWeChat">
+                            <v-btn color="green" variant="flat" class="h-100 py-0" style="min-width: 64px"
+                                @click="triggerWeChatScanForCode">
+                                <v-icon start>mdi-qrcode-scan</v-icon>扫码
+                            </v-btn>
+                        </template>
+                    </v-text-field>
 
                     <div class="text-right">
                         <v-btn color="primary" @click="submit" :disabled="!valid">新增物品</v-btn>
@@ -71,14 +89,10 @@ const requiredRule = (v) => !!v || '此项为必填'
 
 const valid = ref(false)
 const dateMenu = ref(false)
+const codeMode = ref('auto')
+const skipCodeWatchOnce = ref(false)
 
 const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
-
-function triggerWeChatScan() {
-    const redirectUrl = window.location.origin + window.location.pathname
-    const scanUrl = `https://996315.com/api/scan/?redirect_uri=${encodeURIComponent(redirectUrl)}`
-    window.location.href = scanUrl
-}
 
 const imagePreview = ref(null)
 const photoInput = ref(null)
@@ -95,6 +109,17 @@ const item = ref({
     code: generateCode()
 })
 
+// 自动/手动切换时处理 code
+watch(codeMode, (mode) => {
+    if (skipCodeWatchOnce.value) {
+        skipCodeWatchOnce.value = false
+        return
+    }
+
+    if (mode === 'auto') item.value.code = generateCode()
+    else item.value.code = ''
+})
+
 watch(item, (val) => {
     localStorage.setItem('item_data', JSON.stringify(val))
 }, { deep: true })
@@ -106,15 +131,18 @@ watch(imagePreview, (val) => {
 onMounted(async () => {
     const saved = localStorage.getItem('item_data')
     if (saved) Object.assign(item.value, JSON.parse(saved))
-
-    // 🛡️ 保证 received_at 是 Date 类型
     if (!(item.value.received_at instanceof Date)) {
         item.value.received_at = new Date(item.value.received_at || Date.now())
     }
+
+    const savedMode = localStorage.getItem('code_mode')
+    if (savedMode === 'manual' || savedMode === 'auto') {
+        codeMode.value = savedMode
+    }
+
     const preview = localStorage.getItem('item_image_preview')
     if (preview) {
         imagePreview.value = preview
-
         const byteString = atob(preview.split(',')[1])
         const mimeString = preview.split(',')[0].split(':')[1].split(';')[0]
         const ab = new ArrayBuffer(byteString.length)
@@ -125,13 +153,20 @@ onMounted(async () => {
         item.value.photo = file
     }
 
-    const qr = route.query.qrresult
-    if (qr) {
-        const code = qr.split(',')[1] || qr
-        item.value.upc = code
+    const params = new URLSearchParams(window.location.search)
+    const qr = params.get('qrresult')
+    const target = params.get('scan_target')
+    if (qr && target) {
+        const result = decodeURIComponent(qr.split(',')[1] || qr)
+        if (target === 'code') {
+            skipCodeWatchOnce.value = true
+            item.value.code = result
+        } else if (target === 'upc') {
+            item.value.upc = result
+        }
+        localStorage.removeItem('code_mode')
     }
 
-    // 加载储存位置
     try {
         const res = await fetch(`${API_BASE}/api/locations/load_locations.php`)
         const json = await res.json()
@@ -190,10 +225,7 @@ async function handleImageUpload(e) {
             if (!blob) return
             item.value.photo = new File([blob], file.name, { type: 'image/jpeg' })
             const previewReader = new FileReader()
-            previewReader.onload = e => {
-                imagePreview.value = e.target.result
-                localStorage.setItem('item_image_preview', imagePreview.value)
-            }
+            previewReader.onload = e => imagePreview.value = e.target.result
             previewReader.readAsDataURL(item.value.photo)
         }, 'image/jpeg', 0.7)
     }
@@ -210,6 +242,19 @@ function generateCode() {
         now.getMinutes().toString().padStart(2, '0') +
         now.getSeconds().toString().padStart(2, '0') +
         Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+}
+
+function triggerWeChatScanForUPC() {
+    const redirectUrl = location.origin + location.pathname + '?scan_target=upc'
+    const scanUrl = `https://996315.com/api/scan/?redirect_uri=${encodeURIComponent(redirectUrl)}`
+    window.open(scanUrl, '_self')
+}
+
+function triggerWeChatScanForCode() {
+    localStorage.setItem('code_mode', codeMode.value)
+    const redirectUrl = location.origin + location.pathname + '?scan_target=code'
+    const scanUrl = `https://996315.com/api/scan/?redirect_uri=${encodeURIComponent(redirectUrl)}`
+    window.open(scanUrl, '_self')
 }
 
 async function submit() {
@@ -248,6 +293,8 @@ async function submit() {
                 photo: null,
                 code: generateCode()
             }
+            codeMode.value = 'auto'
+            imagePreview.value = null               // ✅ 清除预览图
             localStorage.removeItem('item_image_preview')
         } else {
             alert('❌ 新增失败：' + data.error)
@@ -258,5 +305,6 @@ async function submit() {
     }
 }
 </script>
+
 
 <style scoped></style>
