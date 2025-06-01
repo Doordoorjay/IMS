@@ -53,13 +53,21 @@
                     </v-menu>
 
                     <!-- Code 输入模式 -->
-                    <v-radio-group v-model="codeMode" row class="mb-3">
-                        <v-radio label="自动生成" value="auto" />
-                        <v-radio label="手动输入" value="manual" />
-                    </v-radio-group>
+                    <v-btn-toggle v-model="codeMode" mandatory class="mb-4">
+                        <v-btn value="auto" color="primary" variant="outlined"
+                            :class="{ 'text-primary': codeMode === 'auto' }">
+                            自动生成
+                        </v-btn>
+                        <v-btn value="manual" color="primary" variant="outlined"
+                            :class="{ 'text-primary': codeMode === 'manual' }">
+                            手动输入
+                        </v-btn>
+                    </v-btn-toggle>
 
-                    <v-text-field v-model="item.code" label="物品 Code" :readonly="codeMode === 'auto'"
-                        :rules="[v => !!v || 'Code 为必填项']" class="mb-6">
+                    <v-text-field v-model="item.code" label="物品 Code" :readonly="codeMode === 'auto'" :rules="[
+                        v => !!v || 'Code 为必填项',
+                        v => /^I\d+$/.test(v) || 'Code 格式错误，必须以 I 开头，后接数字', v => v.length <= 18 || 'Code 长度不能超过 18 个字符'
+                    ]" class="mb-6">
                         <template #append v-if="codeMode === 'manual' && isWeChat">
                             <v-btn color="green" variant="flat" class="h-100 py-0" style="min-width: 64px"
                                 @click="triggerWeChatScanForCode">

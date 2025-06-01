@@ -32,6 +32,11 @@ if (!$name || !$code) {
   exit;
 }
 
+if (!preg_match('/^I\d+$/', $code)) {
+  echo json_encode(['success' => false, 'error' => '编号格式不正确，必须以 I 开头，后接数字']);
+  exit;
+}
+
 // 处理图片上传
 $photo_url = null;
 if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {

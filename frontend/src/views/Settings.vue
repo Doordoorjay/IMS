@@ -120,9 +120,11 @@ watch(() => settings.darkMode, async (val) => {
     theme.global.name.value = val ? 'dark' : 'light'
     await autoSaveSettings()
 })
-watch(() => settings.showBackendStatus, async () => {
+watch(() => settings.showBackendStatus, async (val) => {
+    localStorage.setItem('showBackendStatus', JSON.stringify(val))
     await autoSaveSettings()
 })
+
 
 // 加载位置
 const loadLocations = async () => {

@@ -56,12 +56,25 @@
 <script setup>
 import BackendStatus from './BackendStatus.vue'
 import { ref, onMounted } from 'vue'
+
 const drawer = ref(false)
 const showBackendStatus = ref(true)
+
 onMounted(() => {
-    const saved = JSON.parse(localStorage.getItem('showBackendStatus') || 'true')
-    showBackendStatus.value = saved
+    // 初始读取 localStorage
+    const saved = localStorage.getItem('showBackendStatus')
+    showBackendStatus.value = saved === null ? true : JSON.parse(saved)
+
+    // 启动轮询检测（每 2 秒）
+    setInterval(() => {
+        const current = localStorage.getItem('showBackendStatus')
+        const parsed = current === null ? true : JSON.parse(current)
+        if (parsed !== showBackendStatus.value) {
+            showBackendStatus.value = parsed
+        }
+    }, 2000)
 })
+
 </script>
 
 <style scoped>
