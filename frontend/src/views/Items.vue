@@ -3,21 +3,74 @@
     <v-main>
         <v-container class="py-6">
             <!-- 分类 Tabs -->
-            <v-tabs v-model="currentTab" background-color="grey-lighten-4" grow>
-                <v-tab v-for="(label, status) in statusMap" :key="status" @click="loadItems(status)">
-                    {{ label }}
-                </v-tab>
-            </v-tabs>
+            <v-tabs
+    v-model="currentTab"
+    background-color="grey-lighten-4"
+    grow
+    @update:modelValue="loadItems"
+>
+    <v-tab
+        v-for="(label, status) in statusMap"
+        :key="status"
+        :value="status"
+    >
+        {{ label }}
+    </v-tab>
+</v-tabs>
 
-            <!-- 总数量统计 -->
-            <div class="text-subtitle-1 font-weight-medium my-4 text-grey-darken-2">
-                当前列表总数：{{ items.length }} 项
-            </div>
-            <!-- 导出按钮 -->
-            <v-btn color="primary" class="ml-4" @click="exportToExcel">
+            <!-- 筛选位置 -->
+<v-row class="mt-4 mb-2" dense v-if="currentTab === 'available'">
+    <v-col cols="12" sm="6" md="3">
+        <v-select
+            v-model="selectedLocationId"
+            :items="[{ id: null, name: '全部位置' }, ...Object.entries(locationMap).map(([id, name]) => ({ id: Number(id), name }))]"
+            item-title="name"
+            item-value="id"
+            label="筛选位置"
+            clearable
+            variant="outlined"
+            density="compact"
+            @update:modelValue="loadItems(currentTab)"
+        ></v-select> 
+    </v-col>
+</v-row>
+
+            <!-- 当前列表总数 + 导出按钮组 -->
+<v-row class="mt-4 mb-4" align="center" justify="space-between">
+    <v-col cols="12" md="6">
+        <!-- 当前列表总数美化 -->
+        <div class="text-h6 font-weight-medium text-grey-darken-2">
+            当前列表总数：
+            <v-chip color="primary" variant="tonal" class="ml-2" size="large">
+                {{ items.length }} 项
+            </v-chip>
+        </div>
+    </v-col>
+
+    <v-col cols="12" md="6" class="d-flex justify-end flex-wrap gap-2">
+        <!-- 如果是 'available' tab，显示两个按钮 -->
+        <template v-if="currentTab === 'available'">
+            <v-btn color="primary" variant="tonal" @click="exportToExcel('all')">
                 <v-icon start>mdi-download</v-icon>
-                导出所有物品到 Excel
+                导出所有物品列表（含历史）
             </v-btn>
+
+            <v-btn color="secondary" variant="tonal" @click="exportToExcel(currentTab)">
+                <v-icon start>mdi-download</v-icon>
+                导出当前页面下物品
+            </v-btn>
+        </template>
+
+        <!-- 其他 tab 只显示一个按钮 -->
+        <template v-else>
+            <v-btn color="primary" variant="tonal" @click="exportToExcel(currentTab)">
+                <v-icon start>mdi-download</v-icon>
+                导出当前页面下物品
+            </v-btn>
+        </template>
+    </v-col>
+</v-row>
+
 
 
             <!-- 列表 -->
@@ -171,9 +224,10 @@ import * as XLSX from 'xlsx'
 
 
 const API_BASE = import.meta.env.VITE_API_BASE
-const currentTab = ref(0)
+const currentTab = ref('available')
 const items = ref([])
 const selectedCode = ref(null)
+const selectedLocationId = ref(null)
 const dialog = ref(false)
 const selected = ref(null)
 const giveDialogOpen = ref(false)
@@ -220,7 +274,17 @@ async function loadLocations() {
 }
 
 function loadItems(status = 'available') {
-    fetch(`${API_BASE}/api/item/list.php?status=${status}`)
+    // 如果切换到非 available，重置 selectedLocationId
+    if (status !== 'available') {
+        selectedLocationId.value = null
+    }
+
+    let url = `${API_BASE}/api/item/list.php?status=${status}`
+    if (selectedLocationId.value !== null) {
+        url += `&location_id=${selectedLocationId.value}`
+    }
+
+    fetch(url)
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -230,6 +294,7 @@ function loadItems(status = 'available') {
             }
         })
 }
+
 
 function selectItem(item) {
     selected.value = item
@@ -276,7 +341,7 @@ function formatDate(dateStr) {
     return d.toISOString().split('T')[0]
 }
 
-async function exportToExcel() {
+async function exportToExcel(status = 'all') {
     try {
         // 先加载所有位置（仅导出需要）
         const locRes = await fetch(`${API_BASE}/api/locations/load_locations.php`)
@@ -288,8 +353,13 @@ async function exportToExcel() {
             })
         }
 
-        // 再拉取全部物品
-        const res = await fetch(`${API_BASE}/api/item/list.php?status=all`)
+        // 构造 URL
+        let url = `${API_BASE}/api/item/list.php?status=${status}`
+        if (selectedLocationId.value !== null) {
+            url += `&location_id=${selectedLocationId.value}`
+        }
+
+        const res = await fetch(url)
         const data = await res.json()
         if (!data.success) {
             showSnackbar('导出失败：' + data.error, 'error')
@@ -312,11 +382,10 @@ async function exportToExcel() {
             // 🎁 赠送字段（仅限赠送状态）
             被赠送人: item.given_info?.to || '',
             赠送方式: item.given_info?.method || '',
-            赠送类型: item.given_info?.type || '',
+            赠送类型: item.given_info?.giftType || item.given_info?.type || '',
             赠送活动: item.given_info?.event || '',
             赠送时间: formatDate(item.given_info?.date),
         }))
-
 
         const worksheet = XLSX.utils.json_to_sheet(worksheetData)
         const workbook = XLSX.utils.book_new()
@@ -327,7 +396,16 @@ async function exportToExcel() {
 
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = '物品列表.xlsx'
+// 拼接文件名
+const tabLabel = statusMap[status] || '全部'
+const now = new Date()
+const yyyy = now.getFullYear()
+const mm = String(now.getMonth() + 1).padStart(2, '0')
+const dd = String(now.getDate()).padStart(2, '0')
+const hs = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')
+const dateStr = `${yyyy}-${mm}-${dd}-${hs}`
+
+link.download = `${tabLabel}物品列表-${dateStr}.xlsx`
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)

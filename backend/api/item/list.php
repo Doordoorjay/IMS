@@ -12,13 +12,34 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/lib/db.php';
 global $conn;
 
 $status = $_GET['status'] ?? null;
+$location_id = $_GET['location_id'] ?? null;
 
-// 查询物品（根据状态过滤）
+$where = [];
+$params = [];
+$types = "";
+
+// 处理 status
 if ($status && in_array($status, ['available', 'given', 'used', 'lost'])) {
-    $stmt = $conn->prepare("SELECT * FROM items WHERE status = ? ORDER BY created_at DESC");
-    $stmt->bind_param("s", $status);
-} else {
-    $stmt = $conn->prepare("SELECT * FROM items ORDER BY created_at DESC");
+    $where[] = "status = ?";
+    $params[] = $status;
+    $types .= "s";
+}
+
+// 处理 location_id
+if ($location_id !== null && $location_id !== '') {
+    $where[] = "location_id = ?";
+    $params[] = $location_id;
+    $types .= "i";  // location_id 是 int 类型
+}
+
+// 拼接 SQL
+$whereSql = $where ? ("WHERE " . implode(" AND ", $where)) : "";
+
+$sql = "SELECT * FROM items $whereSql ORDER BY created_at DESC";
+$stmt = $conn->prepare($sql);
+
+if (count($params)) {
+    $stmt->bind_param($types, ...$params);
 }
 
 $stmt->execute();
@@ -69,7 +90,7 @@ foreach ($items as &$item) {
             $item['given_info'] = [
                 'to' => $info['to'] ?? '',
                 'method' => $info['method'] ?? '',
-                'type' => $info['giftType'] ?? $info['type'] ?? '',
+                'giftType' => $info['giftType'] ?? $info['type'] ?? '',
                 'event' => $info['event'] ?? '',
                 'date' => $info['date'] ?? $item['last_action_date']
             ];
