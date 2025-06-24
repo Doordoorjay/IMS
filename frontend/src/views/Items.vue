@@ -1,7 +1,7 @@
 <template>
     <AppNavbar />
     <v-main>
-        <v-container class="py-6">
+    <v-container class="py-6" ref="scrollContainer" @scroll.passive="handleScroll">
             <!-- 分类 Tabs -->
             <v-tabs
     v-model="currentTab"
@@ -32,7 +32,18 @@
             density="compact"
             @update:modelValue="loadItems(currentTab)"
         ></v-select> 
+        
     </v-col>
+  <v-col cols="12" sm="6" md="4">
+    <v-text-field
+      v-model="searchKeyword"
+      label="搜索物品 / 赠送人 / 活动"
+      clearable
+      variant="outlined"
+      density="compact"
+      prepend-inner-icon="mdi-magnify"
+    ></v-text-field>
+  </v-col>
 </v-row>
 
             <!-- 当前列表总数 + 导出按钮组 -->
@@ -70,13 +81,18 @@
         </template>
     </v-col>
 </v-row>
-
-
-
             <!-- 列表 -->
             <v-row class="mt-4" dense>
-                <v-col v-for="item in items" :key="item.code" cols="12" sm="6" md="6" lg="auto" class="pa-2"
-                    style="max-width: 100%; flex: 1 1 330px">
+        <v-col
+          v-for="item in paginatedItems"
+          :key="item.code"
+          cols="12"
+          sm="6"
+          md="6"
+          lg="auto"
+          class="pa-2"
+          style="max-width: 100%; flex: 1 1 330px"
+        >
                     <v-card class="rounded-xl d-flex justify-space-between align-center" elevation="2"
                         style="overflow: visible; height: 100%; width: 100%" @click="selectItem(item)">
 
@@ -131,9 +147,15 @@
                         </div>
 
                         <!-- 右侧图片 -->
-                        <v-img :src="getImageUrl(item.photo_url) || '/default.png'"
-                            style="width: 180px; height: 200px; object-fit: cover; min-width: 150px"
-                            class="ma-4 rounded" />
+                        <v-img
+  :src="getImageUrl(item.photo_url) || '/default.png'"
+  :lazy-src="'/default.png'"
+  lazy
+  width="180"
+  height="200"
+  class="ma-4 rounded"
+  style="object-fit: cover; min-width: 150px"
+/>
                     </v-card>
                 </v-col>
             </v-row>
@@ -209,12 +231,31 @@
             <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
                 {{ snackbar.message }}
             </v-snackbar>
-        </v-container>
-    </v-main>
+        <!-- 加载中提示 -->
+      <div v-if="loadingMore" class="text-center my-4">
+        <v-progress-circular indeterminate color="primary" />
+        <div class="mt-2 text-subtitle-2">加载中...</div>
+      </div>
+
+      <!-- 回到顶部按钮 -->
+      <v-fab-transition>
+        <v-btn
+          v-if="showBackToTop"
+          icon
+          large
+          class="back-to-top"
+          color="primary"
+          @click="scrollToTop"
+        >
+          <v-icon>mdi-arrow-up</v-icon>
+        </v-btn>
+      </v-fab-transition>
+    </v-container>
+  </v-main>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import GiveDialog from '@/components/GiveDialog.vue'
 import LostDialog from '@/components/LostDialog.vue'
@@ -222,9 +263,13 @@ import ConfirmUseDialog from '@/components/ConfirmUseDialog.vue'
 import MoveDialog from '@/components/MoveDialog.vue'
 import * as XLSX from 'xlsx'
 
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+});
 
 const API_BASE = import.meta.env.VITE_API_BASE
 const currentTab = ref('available')
+const searchKeyword = ref('')
 const items = ref([])
 const selectedCode = ref(null)
 const selectedLocationId = ref(null)
@@ -237,6 +282,42 @@ const moveDialogOpen = ref(false)
 const giveDialogForm = ref({})
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
+const pageSize = 20
+const page = ref(1)
+const loadingMore = ref(false)
+const scrollContainer = ref(null)
+const showBackToTop = ref(false)
+
+// 计算分页后的结果
+const paginatedItems = computed(() => {
+  return filteredItems.value.slice(0, page.value * pageSize)
+})
+
+// 监听 tab 或搜索变动，重置分页
+watch([() => currentTab.value, searchKeyword], () => {
+  page.value = 1
+})
+
+function handleScroll() {
+  const scrollHeight = document.documentElement.scrollHeight;
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+  const clientHeight = document.documentElement.clientHeight;
+
+  showBackToTop.value = scrollTop > 500;
+
+  if (scrollTop + clientHeight >= scrollHeight - 300 && !loadingMore.value && paginatedItems.value.length < filteredItems.value.length) {
+    loadingMore.value = true;
+    setTimeout(() => {
+      page.value++;
+      loadingMore.value = false;
+    }, 300);
+  }
+}   
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function showSnackbar(payload, fallbackColor = 'success') {
     if (typeof payload === 'string') {
         snackbar.value = { show: true, message: payload, color: fallbackColor }
@@ -248,6 +329,18 @@ function showSnackbar(payload, fallbackColor = 'success') {
         }
     }
 }
+
+const filteredItems = computed(() => {
+  const keyword = searchKeyword.value?.toLowerCase().trim()
+  if (!keyword) return items.value
+
+  return items.value.filter(item => {
+    const name = item.name?.toLowerCase() || ''
+    const source = item.source?.toLowerCase() || ''
+    const venue = item.venue?.toLowerCase() || ''
+    return name.includes(keyword) || source.includes(keyword) || venue.includes(keyword)
+  })
+})
 
 
 const getImageUrl = (path) =>
@@ -289,6 +382,7 @@ function loadItems(status = 'available') {
         .then(data => {
             if (data.success) {
                 items.value = data.items
+
             } else {
                 showSnackbar('加载失败：' + data.error, 'error')
             }
@@ -422,5 +516,14 @@ link.download = `${tabLabel}物品列表-${dateStr}.xlsx`
 onMounted(() => {
     loadLocations()
     loadItems()
+    window.addEventListener('scroll', handleScroll);
 })
 </script>
+<style scoped>
+.back-to-top {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 999;
+}
+</style>
