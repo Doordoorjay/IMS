@@ -9,3 +9,7 @@
 nginx.htaccess
 config.php
 install.lock
+backend.Dockerfile
+frontend.Dockerfile
+nginx.conf
+docker-compose.yml
