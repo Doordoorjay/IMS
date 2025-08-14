@@ -13,3 +13,4 @@ backend.Dockerfile
 frontend.Dockerfile
 nginx.conf
 docker-compose.yml
+backend_nginx.conf
